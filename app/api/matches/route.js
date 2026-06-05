@@ -97,8 +97,8 @@ function generateMockScore(customer, match) {
   if (customer.wantKids === match.wantKids) score += 5;
   
   const label = score > 90 ? "High Potential Match" : score > 80 ? "Good Match" : "Moderate Match";
-  const explanation = \`Based on our algorithm, \${match.firstName} is a \${label.toLowerCase()} because you share similar values regarding \${customer.wantKids === match.wantKids ? 'family planning' : 'lifestyle'}.\`;
-  const introEmail = \`Hi \${customer.firstName},\\n\\nI'd like to introduce you to \${match.firstName}. They work as a \${match.designation} at \${match.currentCompany} and share your background. I think you two would really hit it off! Let me know if you'd like to connect.\\n\\nBest,\\nYour Matchmaker\`;
+  const explanation = `Based on our algorithm, ${match.firstName} is a ${label.toLowerCase()} because you share similar values regarding ${customer.wantKids === match.wantKids ? 'family planning' : 'lifestyle'}.`;
+  const introEmail = `Hi ${customer.firstName},\n\nI'd like to introduce you to ${match.firstName}. They work as a ${match.designation} at ${match.currentCompany} and share your background. I think you two would really hit it off! Let me know if you'd like to connect.\n\nBest,\nYour Matchmaker`;
 
   return { score, label, explanation, introEmail };
 }

@@ -167,3 +167,8 @@ a:hover {
   background-color: #f1f5f9;
   color: #475569;
 }
+
+@keyframes slideIn {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
