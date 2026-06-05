@@ -1,0 +1,104 @@
+import { NextResponse } from 'next/server';
+import { getCustomerById, getAllProfiles } from '@/lib/dataAccess';
+import OpenAI from 'openai';
+
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+
+export async function POST(request) {
+  try {
+    const { customerId } = await request.json();
+    const customer = getCustomerById(customerId);
+    
+    if (!customer) {
+      return NextResponse.json({ success: false, message: 'Customer not found' }, { status: 404 });
+    }
+
+    const allProfiles = getAllProfiles();
+    const oppositeGender = customer.gender === 'Male' ? 'Female' : 'Male';
+    let potentialMatches = allProfiles.filter(p => p.gender === oppositeGender);
+
+    // Apply baseline filtering
+    if (customer.gender === 'Male') {
+      // For male customers: women who are younger, earn less, shorter, and have matching views on children
+      const customerHeightInches = parseHeight(customer.height);
+      potentialMatches = potentialMatches.filter(p => {
+        const pHeight = parseHeight(p.height);
+        const matchesKids = customer.wantKids === p.wantKids || customer.wantKids === 'Maybe' || p.wantKids === 'Maybe';
+        return p.age < customer.age && p.income <= customer.income && pHeight < customerHeightInches && matchesKids;
+      });
+    } else {
+      // For female customers: compatibility on profession, values (diet/religion), relocation preferences
+      potentialMatches = potentialMatches.filter(p => {
+        const matchesDiet = customer.diet === p.diet || p.diet === 'Vegetarian'; // Simple proxy for values
+        const matchesRelocation = customer.openToRelocate === p.openToRelocate || customer.openToRelocate === 'Maybe' || p.openToRelocate === 'Maybe';
+        return p.age >= customer.age - 2 && matchesDiet && matchesRelocation;
+      });
+    }
+
+    // Take top 5 candidates to process (to save time and tokens)
+    potentialMatches = potentialMatches.slice(0, 5);
+
+    // Score and add explanations using AI
+    const enrichedMatches = await Promise.all(potentialMatches.map(async (match) => {
+      if (openai) {
+        try {
+          const prompt = `
+            Analyze compatibility between these two individuals for Indian matchmaking.
+            Customer (Seeking match): ${JSON.stringify(customer)}
+            Potential Match: ${JSON.stringify(match)}
+            
+            Provide a JSON response with:
+            {
+              "score": <number 1-100>,
+              "label": <"High Potential Match", "Good Match", or "Moderate Match">,
+              "explanation": <Short 2 sentence explanation of why they are a good fit based on the data>,
+              "introEmail": <A short personalized intro email (1 paragraph) that the matchmaker could send to the Customer about this Match>
+            }
+          `;
+          
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
+          });
+          
+          const aiResult = JSON.parse(completion.choices[0].message.content);
+          return { ...match, aiMatchData: aiResult };
+        } catch (error) {
+          console.error("OpenAI Error:", error);
+          return { ...match, aiMatchData: generateMockScore(customer, match) };
+        }
+      } else {
+        // Fallback if no OpenAI Key
+        return { ...match, aiMatchData: generateMockScore(customer, match) };
+      }
+    }));
+
+    return NextResponse.json({ success: true, matches: enrichedMatches });
+  } catch (error) {
+    console.error("Match API Error:", error);
+    return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 });
+  }
+}
+
+// Helper to convert 5'10" to inches
+function parseHeight(heightStr) {
+  const parts = heightStr.split("'");
+  const feet = parseInt(parts[0]);
+  const inches = parts[1] ? parseInt(parts[1].replace('"', '')) : 0;
+  return (feet * 12) + inches;
+}
+
+// Fallback scoring logic when OpenAI is not configured
+function generateMockScore(customer, match) {
+  let score = 75; // base score
+  if (customer.religion === match.religion) score += 10;
+  if (customer.diet === match.diet) score += 10;
+  if (customer.wantKids === match.wantKids) score += 5;
+  
+  const label = score > 90 ? "High Potential Match" : score > 80 ? "Good Match" : "Moderate Match";
+  const explanation = \`Based on our algorithm, \${match.firstName} is a \${label.toLowerCase()} because you share similar values regarding \${customer.wantKids === match.wantKids ? 'family planning' : 'lifestyle'}.\`;
+  const introEmail = \`Hi \${customer.firstName},\\n\\nI'd like to introduce you to \${match.firstName}. They work as a \${match.designation} at \${match.currentCompany} and share your background. I think you two would really hit it off! Let me know if you'd like to connect.\\n\\nBest,\\nYour Matchmaker\`;
+
+  return { score, label, explanation, introEmail };
+}
