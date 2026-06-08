@@ -7,7 +7,7 @@ export const metadata = {
   title: "Dashboard | MatchHub",
 };
 
-export default async function Dashboard() {
+export default async function Dashboard({ searchParams }) {
   const cookieStore = await cookies();
   const matchmakerId = cookieStore.get('matchmakerId')?.value;
 
@@ -15,7 +15,18 @@ export default async function Dashboard() {
     redirect('/login');
   }
 
-  const customers = getAssignedCustomers(matchmakerId);
+  // Parse page from URL parameters
+  const params = await searchParams;
+  const currentPage = parseInt(params?.page || "1", 10);
+  const pageSize = 20;
+
+  const allCustomers = getAssignedCustomers(matchmakerId);
+  const totalPages = Math.ceil(allCustomers.length / pageSize);
+  
+  // Get only the customers for the current page
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const customers = allCustomers.slice(startIndex, endIndex);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -61,9 +72,13 @@ export default async function Dashboard() {
         </header>
 
         <main className="container" style={{ padding: "3rem 1.5rem" }}>
-          <div className="animate-fade-in" style={{ marginBottom: "2.5rem" }}>
-            <h2 style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>My Assigned Customers</h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Manage and track your clients' matchmaking journey.</p>
+          <div className="animate-fade-in" style={{ marginBottom: "2.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <div>
+              <h2 style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>My Assigned Customers</h2>
+              <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>
+                Showing {startIndex + 1}-{Math.min(endIndex, allCustomers.length)} of {allCustomers.length} clients
+              </p>
+            </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "2rem" }}>
@@ -102,7 +117,7 @@ export default async function Dashboard() {
               </Link>
             ))}
             
-            {customers.length === 0 && (
+            {allCustomers.length === 0 && (
               <div className="card" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "4rem", color: "var(--text-secondary)" }}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto 1rem auto", opacity: 0.5 }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                 <h3 style={{ fontSize: "1.25rem", color: "var(--text-primary)", marginBottom: "0.5rem" }}>No Customers Found</h3>
@@ -110,6 +125,32 @@ export default async function Dashboard() {
               </div>
             )}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1rem", marginTop: "3rem" }}>
+              {currentPage > 1 ? (
+                <Link href={`/dashboard?page=${currentPage - 1}`} className="btn btn-secondary">
+                  Previous
+                </Link>
+              ) : (
+                <button className="btn btn-secondary" disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>Previous</button>
+              )}
+              
+              <span style={{ fontWeight: "500", color: "var(--text-primary)" }}>
+                Page {currentPage} of {totalPages}
+              </span>
+
+              {currentPage < totalPages ? (
+                <Link href={`/dashboard?page=${currentPage + 1}`} className="btn btn-primary">
+                  Next
+                </Link>
+              ) : (
+                <button className="btn btn-primary" disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>Next</button>
+              )}
+            </div>
+          )}
+
         </main>
       </div>
     </div>
