@@ -121,7 +121,7 @@ const matchmakers = [
   }
 ];
 
-const assignedCustomers = profiles.slice(0, 20).map(p => p.id);
+const assignedCustomers = profiles.map(p => p.id);
 
 const mockDB = {
   matchmakers,
