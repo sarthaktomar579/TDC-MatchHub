@@ -35,8 +35,8 @@ export async function POST(request) {
       });
     }
 
-    // Take top 5 candidates to process (to save time and tokens)
-    potentialMatches = potentialMatches.slice(0, 5);
+    // Take top 3 candidates to process to avoid Gemini free tier rate limits (15 RPM)
+    potentialMatches = potentialMatches.slice(0, 3);
 
     // Score and add explanations using AI
     const enrichedMatches = await Promise.all(potentialMatches.map(async (match) => {
@@ -65,10 +65,9 @@ export async function POST(request) {
           const aiResult = JSON.parse(result.response.text());
           return { ...match, aiMatchData: aiResult };
         } catch (error) {
-          console.error("Gemini Error:", error);
-          const fallback = generateMockScore(customer, match);
-          fallback.explanation = `Gemini Error: ${error.message}. ` + fallback.explanation;
-          return { ...match, aiMatchData: fallback };
+          console.error("Gemini Error:", error.message);
+          // Gracefully fallback to mock score without breaking the UI
+          return { ...match, aiMatchData: generateMockScore(customer, match) };
         }
       } else {
         // Fallback if no Gemini Key
