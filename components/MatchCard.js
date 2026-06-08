@@ -5,10 +5,12 @@ import Toast from "./Toast";
 
 export default function MatchCard({ match }) {
   const [showToast, setShowToast] = useState(false);
+  const [isSent, setIsSent] = useState(false);
   const aiData = match.aiMatchData;
   
   const handleSendMatch = () => {
     // In a real app, this would hit an API endpoint to log the action or send the email
+    setIsSent(true);
     setShowToast(true);
   };
 
@@ -61,8 +63,18 @@ export default function MatchCard({ match }) {
         </div>
       )}
 
-      <button className="btn btn-primary" onClick={handleSendMatch} style={{ width: "100%", marginTop: "auto" }}>
-        Send Match
+      <button 
+        className="btn btn-primary" 
+        onClick={handleSendMatch} 
+        disabled={isSent}
+        style={{ 
+          width: "100%", 
+          marginTop: "auto",
+          backgroundColor: isSent ? "var(--text-secondary)" : undefined,
+          cursor: isSent ? "not-allowed" : "pointer"
+        }}
+      >
+        {isSent ? "Message Sent" : "Send Match"}
       </button>
 
       {showToast && (
