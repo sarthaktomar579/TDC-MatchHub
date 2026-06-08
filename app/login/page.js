@@ -41,7 +41,7 @@ export default function Login() {
       justifyContent: "center", 
       alignItems: "center", 
       minHeight: "100vh",
-      backgroundImage: "url('https://images.unsplash.com/photo-1518104593124-ac2e82a5eb9b?q=80&w=2070&auto=format&fit=crop')",
+      backgroundImage: "url('https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=2070&auto=format&fit=crop')",
       backgroundSize: "cover",
       backgroundPosition: "center",
       position: "relative"
