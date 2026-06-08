@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getCustomerById, getAllProfiles } from '@/lib/dataAccess';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 export async function POST(request) {
   try {
@@ -40,14 +40,14 @@ export async function POST(request) {
 
     // Score and add explanations using AI
     const enrichedMatches = await Promise.all(potentialMatches.map(async (match) => {
-      if (openai) {
+      if (genAI) {
         try {
           const prompt = `
             Analyze compatibility between these two individuals for Indian matchmaking.
             Customer (Seeking match): ${JSON.stringify(customer)}
             Potential Match: ${JSON.stringify(match)}
             
-            Provide a JSON response with:
+            Provide a JSON response with exactly these fields:
             {
               "score": <number 1-100>,
               "label": <"High Potential Match", "Good Match", or "Moderate Match">,
@@ -56,20 +56,20 @@ export async function POST(request) {
             }
           `;
           
-          const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
-            response_format: { type: "json_object" }
+          const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
+            generationConfig: { responseMimeType: "application/json" }
           });
           
-          const aiResult = JSON.parse(completion.choices[0].message.content);
+          const result = await model.generateContent(prompt);
+          const aiResult = JSON.parse(result.response.text());
           return { ...match, aiMatchData: aiResult };
         } catch (error) {
-          console.error("OpenAI Error:", error);
+          console.error("Gemini Error:", error);
           return { ...match, aiMatchData: generateMockScore(customer, match) };
         }
       } else {
-        // Fallback if no OpenAI Key
+        // Fallback if no Gemini Key
         return { ...match, aiMatchData: generateMockScore(customer, match) };
       }
     }));
