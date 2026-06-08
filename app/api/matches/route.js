@@ -66,12 +66,16 @@ export async function POST(request) {
           return { ...match, aiMatchData: aiResult };
         } catch (error) {
           console.error("Gemini Error:", error.message);
-          // Gracefully fallback to mock score without breaking the UI
-          return { ...match, aiMatchData: generateMockScore(customer, match) };
+          // Gracefully fallback to mock score
+          const mock = generateMockScore(customer, match);
+          mock.explanation = "(Vercel Catch Error: " + error.message + ") " + mock.explanation;
+          return { ...match, aiMatchData: mock };
         }
       } else {
         // Fallback if no Gemini Key
-        return { ...match, aiMatchData: generateMockScore(customer, match) };
+        const mock = generateMockScore(customer, match);
+        mock.explanation = "(Vercel Missing Key Error: GEMINI_API_KEY is undefined in Vercel settings!) " + mock.explanation;
+        return { ...match, aiMatchData: mock };
       }
     }));
 
