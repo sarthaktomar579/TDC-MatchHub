@@ -57,7 +57,7 @@ export async function POST(request) {
           `;
           
           const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
+            model: "gemini-2.5-flash",
             generationConfig: { responseMimeType: "application/json" }
           });
           
@@ -66,7 +66,9 @@ export async function POST(request) {
           return { ...match, aiMatchData: aiResult };
         } catch (error) {
           console.error("Gemini Error:", error);
-          return { ...match, aiMatchData: generateMockScore(customer, match) };
+          const fallback = generateMockScore(customer, match);
+          fallback.explanation = `Gemini Error: ${error.message}. ` + fallback.explanation;
+          return { ...match, aiMatchData: fallback };
         }
       } else {
         // Fallback if no Gemini Key
